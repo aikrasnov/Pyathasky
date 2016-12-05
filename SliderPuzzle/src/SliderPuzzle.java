@@ -19,8 +19,9 @@ public class SliderPuzzle {
     private JButton resetBtn = new JButton("Сбросить");
     private JButton mixBtn = new JButton("Перемешать");
     private JButton acceptDifficult = new JButton("Принять изменение");
-    private JSlider difficultSlider = new JSlider();
-    private int rows = 4;
+    private JSlider difficultSlider = new JSlider(0, 3, 0);
+    private int rows_default = 3;
+    private int rows = rows_default;
     private int cols = rows;
     private JButton[][] cells = new JButton[rows][cols];
     private static SliderPuzzle puzzle = new SliderPuzzle();
@@ -36,6 +37,15 @@ public class SliderPuzzle {
         createGrid();
         mainFrame.add(slider);
 
+    }
+
+    private synchronized void switchControlPanel(boolean state){
+        Component[] components = controlPanel.getComponents();
+        for (Component item:components) {
+            item.setEnabled(state);
+            acceptDifficult.setEnabled(state);
+            difficultSlider.setEnabled(state);
+        }
     }
 
     private void refreshGrid() {
@@ -55,8 +65,9 @@ public class SliderPuzzle {
 
     private void mixCells() {
         //лучший рандом в мире.
+        switchControlPanel(false);
         Random rand = new Random();
-        for (int s = 0; s < 500; s++) {
+        for (int s = 0; s < 100; s++) {
             int t = rand.nextInt(4) + 1;
             for (Integer i = 0; i < rows; i++) {
                 for (Integer j = 0; j < cols; j++) {
@@ -69,6 +80,7 @@ public class SliderPuzzle {
                     }
                 }
             }
+        switchControlPanel(true);
     }
 
     private void checkWin() {
@@ -177,8 +189,6 @@ public class SliderPuzzle {
         allocateMemoryForGrid();
         createGrid();
 
-        JPanel emptyPanel = new JPanel();
-
         controlPanel.setLayout(new GridLayout(4, 3));
         resetBtn.addActionListener(new ResetCells());
 
@@ -187,7 +197,7 @@ public class SliderPuzzle {
 
         JPanel difficult = new JPanel();
         difficult.setLayout(new BorderLayout());
-        difficultSlider = new JSlider(0, 2, 0);
+
         difficultSlider.addChangeListener(new ChangeDifficult());
         acceptDifficult.addActionListener(new AcceptChange());
 
@@ -222,10 +232,17 @@ public class SliderPuzzle {
         }
     }
 
-    class MixCells implements ActionListener {
+    class MixCells extends Thread implements ActionListener {
+        public void run() {
+            mixCells();
+        }
+        public void start() {
+            new Thread(this).start();
+        }
         public void actionPerformed(ActionEvent e) {
             status.setText("Перемешиваем ячейки...");
-            mixCells();
+            MixCells T1 = new MixCells();
+            T1.start();
             status.setText("Готово! Ячейки перемешаны.");
         }
     }
@@ -235,14 +252,11 @@ public class SliderPuzzle {
             int n = difficultSlider.getValue();
             status.setText("Изменяем сложность на +" + n);
             if (n == 0) {
-                rows = 4;
-                cols = 4;
-            } else if (n == 1){
-                rows = 5;
-                cols = 5;
-            } else if (n == 2){
-                rows = 6;
-                cols = 6;
+                rows = rows_default;
+                cols = rows_default;
+            } else {
+                rows = rows_default + n;
+                cols = rows;
             }
             refreshComponents();
             status.setText("Готово! Cложность изменена.");
